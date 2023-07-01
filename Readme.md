@@ -138,7 +138,7 @@ console.log("Decoded person:", decodedPerson);
 as you show when client send request to server , the web server will handle the request and send it to the gRPC server , then the gRPC server will handle the request and send it to the microservice , then the microservice will handle the request and send the response to the gRPC server , then the gRPC server will send the response to the web server , then the web server will send the response to the client  , 
 in grpc every service has its own proto file , and the proto file contains the structure of the data and the methods that the service can handle , every microservice has its own proto file , and the client has its own proto file that contains the structure of the data and the methods that the client can call .
 
-## type of gRPC connections
+## 🚧 type of gRPC connections
 - unary : client send one request and get one response .
 
 - server streaming : client send one request and get many responses .
@@ -147,7 +147,7 @@ in grpc every service has its own proto file , and the proto file contains the s
 
 - bidirectional streaming : client send many requests and get many responses .
 
-## unary type (what is ? )
+## 📌 unary type (what is ? )
 
 unary type is the most common type of gRPC connections , in this type the client send one request and get one response , assume that there RandomService microservice that has `generateRandomString` method that return random number , and there is RandomClient that call `generateRandomString` method , the client send one request to the server and get one response , so the shape of proto file will be like this :
 
@@ -237,7 +237,7 @@ test();
 ### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/server_to_client)
 
 ---
-## server streaming type (what is ? )
+## 📌 server streaming type (what is ? )
 
 server streaming type is the type that the client send one request and get many responses , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send one request to the server and get many responses , so the shape of proto file will be like this :
 
@@ -324,7 +324,7 @@ test();
 ### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/server-side-streaming)
 
 ---
-## client streaming type (what is ? )
+## 📌 client streaming type (what is ? )
 
 client streaming type is the type that the client send many requests and get one response , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send many requests to the server and get one response , so the shape of proto file will be like this :
 
@@ -411,7 +411,7 @@ test([20,30,50]);
 ### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/client-side-streaming)
 
 ---
-## bidirectional streaming type (what is ? )
+## 📌 bidirectional streaming type (what is ? )
 
 bidirectional streaming type is the type that the client send many requests and get many responses , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send many requests to the server and get many responses , so the shape of proto file will be like this :
 
