@@ -129,11 +129,379 @@ const decodedPerson = Person.decode(buffer);
 console.log("Decoded person:", decodedPerson);
 
 ```
+### you can go to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/Protocol-Buffers)
+----
+
 ## 📌 How gRPC works in microservices architecture ?
 ![grpc](https://github.com/youssefshibl/gRPC-nodejs/assets/63800183/e6454e32-d473-4398-8dbf-6c7acd241261)
 
+as you show when client send request to server , the web server will handle the request and send it to the gRPC server , then the gRPC server will handle the request and send it to the microservice , then the microservice will handle the request and send the response to the gRPC server , then the gRPC server will send the response to the web server , then the web server will send the response to the client  , 
+in grpc every service has its own proto file , and the proto file contains the structure of the data and the methods that the service can handle , every microservice has its own proto file , and the client has its own proto file that contains the structure of the data and the methods that the client can call .
+
+## type of gRPC connections
+- unary : client send one request and get one response .
+
+- server streaming : client send one request and get many responses .
+
+- client streaming : client send many requests and get one response .
+
+- bidirectional streaming : client send many requests and get many responses .
+
+## unary type (what is ? )
+
+unary type is the most common type of gRPC connections , in this type the client send one request and get one response , assume that there RandomService microservice that has `generateRandomString` method that return random number , and there is RandomClient that call `generateRandomString` method , the client send one request to the server and get one response , so the shape of proto file will be like this :
+
+```proto
+syntax = "proto3";
+
+package random;
+
+service RandomService {
+  rpc generateRandomString (RandomStringRequest) returns (RandomStringResponse) {}
+}
+
+message RandomStringRequest {
+  int32 numChars = 1;
+}
+
+message RandomStringResponse {
+  string result = 1;
+}
+```
+
+as you see the proto file contains the name of service which is `RandomService` , and the name of the method which is `generateRandomString` , and the request and response of the method , the request is `RandomStringRequest` and the response is `RandomStringResponse` , and the request contains the number of characters that the client want to generate , and the response contains the random string , and the server will generate the random string and send it to the client , the code of the server will be like this :
+
+```js
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+
+// load protofile
+const packageDefinition = protoLoader.loadSync('protofile.proto');
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+// make server
+const server = new grpc.Server();
+
+// set my method to generate random string
+function generateRandomString(call, callback) {
+  // get numchars from request which send from client
+  const numChars = call.request.numChars || 10; // default to 10 characters if not specified
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < numChars; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  callback(null, { result });
+}
+// add service to server
+server.addService(randomProto.RandomService.service, { generateRandomString:generateRandomString });
+// bind server to port
+server.bindAsync('localhost:50051', grpc.ServerCredentials.createInsecure(), () => {
+  console.log('Server running at http://localhost:50051');
+  server.start();
+});
+```
+
+as you see the server has `generateRandomString` method that generate random string and send it to the client , and the code of the client will be like this :
+
+```js
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+// load protofile of the server
+const packageDefinition = protoLoader.loadSync('protofile.proto');
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+// make client
+// note that we can make multi services in one client but our service RamdomService is one service
+const client = new randomProto.RandomService('localhost:50051', grpc.credentials.createInsecure());
+// our promice function that call generateRandomString method
+function generateRandomString(numChars) {
+  return new Promise((resolve, reject) => {
+    client.generateRandomString({ numChars }, (err, response) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(response.result);
+      }
+    });
+  });
+}
+async function test() {
+  try {
+    const randomString = await generateRandomString(100);
+    console.log(randomString);
+  } catch (err) {
+    console.error(err);
+  }
+}
+test();
+```
+### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/server_to_client)
+
+---
+## server streaming type (what is ? )
+
+server streaming type is the type that the client send one request and get many responses , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send one request to the server and get many responses , so the shape of proto file will be like this :
+
+```proto
+syntax = "proto3";
+
+package random;
+
+service RandomService {
+  rpc generateRandomString (RandomStringRequest) returns (stream RandomStringResponse) {}
+}
+
+message RandomStringRequest {
+  int32 numChars = 1;
+}
+
+message RandomStringResponse {
+  string result = 1;
+}
+```
+as you see the proto file is like the unary type but the response is stream , and the server will generate random numbers and send it to the client , the code of the server will be like this :
+
+```js
+const grpc = require("@grpc/grpc-js");
+const protoLoader = require("@grpc/proto-loader");
+// load protofile
+const packageDefinition = protoLoader.loadSync("protofile.proto");
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const server = new grpc.Server();
+function generateRandomString(call) {
+  const number = call.request.numChars || 10; // default to 10 characters if not specified
+  for (let i = 0; i < 10; i++) {
+    call.write({ result: generate(number) });
+  }
+  call.end();
+}
+// add service to server
+server.addService(randomProto.RandomService.service, {
+  generateRandomString: generateRandomString,
+});
+server.bindAsync(
+  "localhost:50051",
+  grpc.ServerCredentials.createInsecure(),
+  () => {
+    console.log("Server running at http://localhost:50051");
+    server.start();
+  }
+);
+
+function generate(number) {
+  let result = "";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < number; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+```
+
+as you see the server has `generateRandomString` method that generate random string and send it to the client , and the code of the client will be like this :
+
+```js
+const grpc = require("@grpc/grpc-js");
+const protoLoader = require("@grpc/proto-loader");
+const packageDefinition = protoLoader.loadSync("protofile.proto");
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const client = new randomProto.RandomService(
+  "localhost:50051",
+  grpc.credentials.createInsecure()
+);
+function test() {
+  const stream = client.generateRandomString({ numChars: 100 });
+  stream.on("data", (response) => {
+    console.log(response.result);
+  });
+  stream.on("end", () => {
+    console.log("Stream ended");
+  });
+}
+
+test();
+```
+### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/server-side-streaming)
+
+---
+## client streaming type (what is ? )
+
+client streaming type is the type that the client send many requests and get one response , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send many requests to the server and get one response , so the shape of proto file will be like this :
+
+```proto
+syntax = "proto3";
+
+package random;
+
+service RandomService {
+  rpc generateRandomString (stream RandomStringRequest) returns (RandomStringResponse) {}
+}
+
+message RandomStringRequest {
+  int32 numChars = 1;
+}
+
+message RandomStringResponse {
+  string result = 1;
+}
+```
+
+as you see the proto file is like the unary type but the request is stream , and the server will generate random numbers and send it to the client , note that server wait to client sending and final it will response one time , the code of the server will be like this :
+
+```js
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+// load protofile
+const packageDefinition = protoLoader.loadSync('protofile.proto');
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const server = new grpc.Server();
+function generateRandomString(call, callback) {
+  let sum = 0;
+  call.on('data', (request) => {
+    sum += request.numChars;
+  });
+  call.on('end', () => {
+
+    callback(null, { result: generate(sum) });
+  });
+}
+// add service to server
+server.addService(randomProto.RandomService.service, { generateRandomString:generateRandomString });
+server.bindAsync('localhost:50051', grpc.ServerCredentials.createInsecure(), () => {
+  console.log('Server running at http://localhost:50051');
+  server.start();
+});
+function generate(number) {
+  let result = "";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < number; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+```
+
+as you see the server has `generateRandomString` method that generate random string and send it to the client , and the code of the client will be like this :
+
+```js
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+const packageDefinition = protoLoader.loadSync('protofile.proto');
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const client = new randomProto.RandomService('localhost:50051', grpc.credentials.createInsecure());
+async function test(numbers) {
+  const stream = client.generateRandomString((err, response) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(response.result);
+    }
+  });
+  for (const number of numbers) {
+    //console.log(number);
+    stream.write({ numChars: number });
+  } 
+  stream.end();
+  
+}
+test([20,30,50]);
+```
+
+### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/client-side-streaming)
+
+---
+## bidirectional streaming type (what is ? )
+
+bidirectional streaming type is the type that the client send many requests and get many responses , assume that there is a microservice that has `getRandomNumbers` method that return random numbers , and there is a client that call `getRandomNumbers` method , the client send many requests to the server and get many responses , so the shape of proto file will be like this :
+
+```proto
+syntax = "proto3";
+package random;
+service RandomService {
+  rpc generateRandomString (stream RandomStringRequest) returns (stream RandomStringResponse) {}
+}
+message RandomStringRequest {
+  int32 numChars = 1;
+}
+message RandomStringResponse {
+  string result = 1;
+}
+```
+
+as you see the proto file is like the client streaming type but the response is stream ,the client send many requests and get many responses , and the server will generate random numbers and send it to the client , note that server no wait to client sending and final it will response one time , it will response in every request , the code of the server will be like this :
+
+```js
+const grpc = require("@grpc/grpc-js");
+const protoLoader = require("@grpc/proto-loader");
+// load protofile
+const packageDefinition = protoLoader.loadSync("protofile.proto");
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const server = new grpc.Server();
+function generateRandomString(call) {
+  call.on("data", (request) => {
+    call.write({ result: generate(request.numChars) });
+  });
+  call.on("end", () => {
+    call.end();
+  });
+}
+// add service to server
+server.addService(randomProto.RandomService.service, {
+  generateRandomString: generateRandomString,
+});
+server.bindAsync(
+  "localhost:50051",
+  grpc.ServerCredentials.createInsecure(),
+  () => {
+    console.log("Server running at http://localhost:50051");
+    server.start();
+  }
+);
+function generate(number) {
+  let result = "";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < number; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+```
+
+as you see the server has `generateRandomString` method that generate random string and send it to the client , and the code of the client will be like this :
+
+```js
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+const packageDefinition = protoLoader.loadSync('protofile.proto');
+const randomProto = grpc.loadPackageDefinition(packageDefinition).random;
+const client = new randomProto.RandomService('localhost:50051', grpc.credentials.createInsecure());
+async function test(numbers) {
+  const stream = client.generateRandomString();
+  stream.on('data', (response) => {
+    console.log(response.result);
+  });
+  stream.on('end', () => {
+    console.log('Stream ended');
+  });
+  for (const number of numbers) {
+    //console.log(number);
+    stream.write({ numChars: number });
+  } 
+  stream.end();
+  
+}
+test([20,30,50]);
+```
 
 
+### yo can got to [code](https://github.com/youssefshibl/gRPC-nodejs/tree/main/bidirectional-streaming)
+
+---
+
+## you can read more about gRPC in [gRPC](https://grpc.io/docs/what-is-grpc/introduction/)
 
 
 
