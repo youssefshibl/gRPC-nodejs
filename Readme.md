@@ -6,7 +6,7 @@
 gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems.
 
 ## 🏃 what is the difference between gRPC and REST?
-gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems , in Rest we use http/1.1 and in gRPC we use http/2, in Rest we use JSON and in gRPC we use protocol buffers , in Rest we use POST,GET,PUT,DELETE and in gRPC we use POST only , in Rest we use text and in gRPC we use binary data, in Rest connection closed after each request and in gRPC connection is persistent , in Rest we use client and server and in gRPC we use client,server and stream.
+ in Rest we use http/1.1 and in gRPC we use http/2, in Rest we use JSON and in gRPC we use protocol buffers , in Rest we use POST,GET,PUT,DELETE and in gRPC we use POST only , in Rest we use text and in gRPC we use binary data, in Rest connection closed after each request and in gRPC connection is persistent , in Rest we use client and server and in gRPC we use client,server and stream.
 
 ## 🧊 what is protocol buffers?
 Protocol buffers are a language-neutral, platform-neutral extensible mechanism for serializing structured data. You define how you want your data to be structured once, then you can use special generated source code to easily write and read your structured data to and from a variety of data streams and using a variety of languages , google microservices use protocol buffers .
